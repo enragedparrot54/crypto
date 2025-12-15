@@ -1,67 +1,82 @@
+"""
+Crypto Backtester - CSV Only
+No live trading. No exchange APIs.
+"""
+
 import os
+import sys
+from datetime import datetime
 
 from data.load_csv import load_candles
 from backtest.engine import BacktestEngine
-from broker.paper_broker import PaperBroker
-from strategies.base_strategy import BaseStrategy
+from strategies.sma_cross import SMACrossStrategy
+import config
 
 
+# Data file path
 DATA_PATH = "data/BTC_5m.csv"
 SYMBOL = "BTC/USDT"
 
 
-class DummyStrategy(BaseStrategy):
-    """A dummy strategy that always holds."""
-    
-    def on_candle(self, history, broker, symbol):
-        return "HOLD"
-
-
 def main():
-    print("Crypto Trading Backtester")
-    print("==========================")
+    """
+    Backtest-only paper trading system.
+    No live trading, APIs, WebSockets, or real orders.
+    """
+    print("\n" + "=" * 50)
+    print("CRYPTO BACKTESTER (CSV Only)")
+    print("No live trading. No exchange APIs.")
+    print("=" * 50)
     
     # Check if data file exists
     if not os.path.exists(DATA_PATH):
-        print(f"Error: Data file not found at '{DATA_PATH}'")
-        return
+        print(f"\nERROR: Data file not found: {DATA_PATH}")
+        print(f"\nPlease create a CSV file with format:")
+        print(f"  timestamp,open,high,low,close,volume")
+        print(f"\nPlace your historical data at: {DATA_PATH}")
+        sys.exit(1)
     
-    # Load candles
+    # Load candles from CSV (historical data only)
+    print(f"\nLoading data from: {DATA_PATH}")
     candles = load_candles(DATA_PATH)
     
     if not candles:
-        print("Error: No candles loaded from CSV file")
-        return
+        print("ERROR: No candles loaded from CSV file")
+        sys.exit(1)
     
-    print(f"Loaded {len(candles)} candles from {DATA_PATH}")
+    print(f"✅ Loaded {len(candles)} candles")
     
-    # Initialize components
-    engine = BacktestEngine()
-    broker = PaperBroker(initial_cash=10000.0)
-    strategy = DummyStrategy()
+    # Show data range
+    first_ts = candles[0]['timestamp']
+    last_ts = candles[-1]['timestamp']
+    try:
+        first_date = datetime.fromtimestamp(first_ts / 1000).strftime('%Y-%m-%d %H:%M')
+        last_date = datetime.fromtimestamp(last_ts / 1000).strftime('%Y-%m-%d %H:%M')
+        print(f"📅 Date range: {first_date} to {last_date}")
+    except:
+        print(f"📅 Timestamp range: {first_ts} to {last_ts}")
     
-    # Run backtest
+    # Initialize backtest engine and strategy
+    engine = BacktestEngine(verbose=True)
+    strategy = SMACrossStrategy(fast=10, slow=30, risk_percent=1.0)
+    
+    # Run backtest (paper trading only - no real orders)
     print(f"\nRunning backtest for {SYMBOL}...")
-    trades = engine.run_backtest(strategy, candles, SYMBOL)
+    results = engine.run_backtest(strategy, candles, SYMBOL)
     
-    # Print performance summary
+    # Print final summary
+    print("\n" + "=" * 50)
+    print("BACKTEST COMPLETE")
+    print("=" * 50)
+    print(f"📊 Candles processed: {len(candles)}")
+    print(f"📈 Trades executed:   {len(results)}")
+    
     performance = engine.evaluate_performance()
-    print("\n--- Performance Summary ---")
-    print(f"Ending Balance: ${performance['ending_balance']:.2f}")
-    print(f"Number of Trades: {performance['num_trades']}")
-    print(f"PnL: ${performance['pnl']:.2f}")
-    
-    # Print last 5 trades
-    if trades:
-        print("\n--- Last 5 Trades ---")
-        for trade in trades[-5:]:
-            print(
-                f"{trade['timestamp']} | {trade['type']:4} | "
-                f"{trade['amount']:.6f} @ ${trade['price']:.2f} | "
-                f"Balance: ${trade['balance_after']:.2f}"
-            )
-    else:
-        print("\nNo trades executed during backtest.")
+    print(f"💰 Starting balance:  ${config.INITIAL_BALANCE:.2f}")
+    print(f"💰 Final balance:     ${performance['ending_balance']:.2f}")
+    print(f"📁 Trade log:         {config.TRADES_LOG_FILE}")
+    print(f"📁 Equity curve:      {config.EQUITY_LOG_FILE}")
+    print("=" * 50 + "\n")
 
 
 if __name__ == "__main__":

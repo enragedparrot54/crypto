@@ -1,103 +1,75 @@
-# Crypto Trading Backtester
+# Crypto Backtester (CSV Only)
 
-A simple backtesting framework for cryptocurrency trading strategies.
+A simple cryptocurrency backtesting system using historical OHLCV data from CSV files.
 
-## Installation
+**⚠️ No live trading. No exchange APIs. Backtest only.**
 
-Install required dependencies:
+## Quick Start
 
 ```bash
-pip install ccxt
+cd bot
+python3 main.py
 ```
+
+## Required CSV Format
+
+Place your historical data in `data/BTC_5m.csv` with this format:
+
+```csv
+timestamp,open,high,low,close,volume
+1609459200000,29000.00,29100.00,28900.00,29050.00,123.45
+1609459500000,29050.00,29150.00,29000.00,29100.00,98.76
+```
+
+- **timestamp**: Unix timestamp in milliseconds
+- **open/high/low/close**: Price values
+- **volume**: Trading volume
+
+## Supported Symbols
+
+- `data/BTC_5m.csv` - Bitcoin
+- `data/ETH_5m.csv` - Ethereum  
+- `data/SOL_5m.csv` - Solana
+
+## Configuration
+
+Edit `config.py` to adjust:
+
+- `INITIAL_BALANCE` - Starting paper balance
+- `STOP_LOSS_PCT` - Stop loss percentage
+- `TAKE_PROFIT_PCT` - Take profit percentage
+- `RISK_PER_TRADE_PCT` - Risk per trade
+- `COOLDOWN_CANDLES` - Candles between trades
+- `TREND_EMA_PERIOD` - EMA trend filter period
+
+## Output Files
+
+After running a backtest:
+
+- `trades.csv` - All executed trades
+- `equity.csv` - Equity curve over time
 
 ## Project Structure
 
 ```
 bot/
-├── main.py                 # Entry point - runs the backtest
+├── main.py              # Entry point
+├── config.py            # Configuration
 ├── data/
-│   ├── load_csv.py         # CSV candle data loader
-│   └── download_candles.py # Download candles from Binance
+│   ├── load_csv.py      # CSV loader
+│   └── BTC_5m.csv       # Historical data
 ├── backtest/
-│   └── engine.py           # Backtesting engine
+│   └── engine.py        # Backtest engine
 ├── broker/
-│   └── paper_broker.py     # Paper trading broker for simulated trades
+│   └── paper_broker.py  # Paper trading broker
 └── strategies/
-    ├── base_strategy.py    # Base strategy class
-    └── sma_cross.py        # SMA crossover strategy implementation
+    ├── base_strategy.py # Strategy interface
+    └── sma_cross.py     # SMA crossover strategy
 ```
 
-## Features
+## Notes
 
-- **Paper Trading Broker**: Simulates trades with position tracking and weighted average entry prices
-- **Backtesting Engine**: Runs strategies against historical candle data
-- **SMA Crossover Strategy**: Built-in strategy using fast/slow SMA crossovers
-- **Performance Evaluation**: Calculates ending balance, trade count, and PnL
-- **Data Downloader**: Fetch historical candles from Binance
-
-## Usage
-
-### 1. Download Historical Data
-
-```bash
-python data/download_candles.py
-```
-
-This will download 1000 BTC/USDT 5-minute candles from Binance and save them to `data/BTC_5m.csv`.
-
-### 2. Run the Backtester
-
-```bash
-python main.py
-```
-
-## CSV Data Format
-
-The CSV file must have these columns:
-- `timestamp`
-- `open`
-- `high`
-- `low`
-- `close`
-- `volume`
-
-## Creating Custom Strategies
-
-Extend `BaseStrategy` and implement the `on_candle()` method:
-
-```python
-from strategies.base_strategy import BaseStrategy
-
-class MyStrategy(BaseStrategy):
-    def on_candle(self, history, broker, symbol):
-        # Your logic here
-        # Return "BUY", "SELL", or "HOLD"
-        return "HOLD"
-```
-
-## Configuration
-
-Edit `main.py` to adjust:
-- `DATA_PATH`: Path to your CSV data file
-- `SYMBOL`: Trading pair symbol
-- Strategy parameters (e.g., `fast`, `slow`, `trade_fraction`)
-
-## Example Output
-
-```
-Crypto Trading Backtester
-==========================
-Loaded 1000 candles from data/BTC_5m.csv
-
-Running backtest for BTC/USDT...
-
---- Performance Summary ---
-Ending Balance: $10523.45
-Number of Trades: 12
-PnL: $523.45
-
---- Last 5 Trades ---
-1702656000.0 | BUY  | 0.234500 @ $42650.00 | Balance: $10000.00
-1702742400.0 | SELL | 0.234500 @ $43120.00 | Balance: $10523.45
-```
-=======
+- This backtester uses **CSV files only**
+- No Binance, Coinbase, or other exchange APIs
+- No internet connection required
+- Paper trading simulation only
