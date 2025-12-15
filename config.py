@@ -1,32 +1,27 @@
 """
-Configuration file for backtest parameters.
-All tunable parameters are defined here.
-
-This is a CSV-only backtester.
-No live trading. No exchange APIs.
+Configuration - CSV-only backtester.
+SOL-USD | LONG ONLY | $1,000 starting balance.
 """
 
-# Account settings
-INITIAL_BALANCE = 10000.0  # Starting balance in USD
+# === SYMBOL ===
+SYMBOL = "SOL-USD"
+TIMEFRAME = "5m"
+DATA_FILE = "data/SOL_5m.csv"
 
-# Risk management
-STOP_LOSS_PCT = -1.0  # Stop loss percentage (e.g., -1.0 = -1%)
-TAKE_PROFIT_PCT = 2.0  # Take profit percentage (e.g., 2.0 = +2%)
-RISK_PER_TRADE_PCT = 1.0  # Risk percentage of account per trade
+# === ACCOUNT ===
+INITIAL_BALANCE = 1000.0
 
-# Trade cooldown
-COOLDOWN_CANDLES = 6  # Minimum candles between trades after a sell
+# === RISK ===
+RISK_PER_TRADE_PCT = 1.0
+STOP_LOSS_PCT = -2.0
+TAKE_PROFIT_PCT = 4.0
 
-# Trend filter
-TREND_EMA_PERIOD = 200  # EMA period for higher-timeframe trend filter
+# === COOLDOWN ===
+COOLDOWN_CANDLES = 6
 
-# Logging
-TRADES_LOG_FILE = "trades.csv"  # CSV file for trade logging
-EQUITY_LOG_FILE = "equity.csv"  # CSV file for equity curve
+# === TREND FILTER ===
+TREND_EMA_PERIOD = 200
 
-# Data files (CSV only - no API calls)
-DATA_FILES = {
-    "BTC": "data/BTC_5m.csv",
-    "ETH": "data/ETH_5m.csv",
-    "SOL": "data/SOL_5m.csv",
-}
+# === OUTPUT ===
+TRADES_LOG_FILE = "trades.csv"
+EQUITY_LOG_FILE = "equity.csv"

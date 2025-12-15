@@ -1,8 +1,13 @@
 # Crypto Backtester (CSV Only)
 
-A simple cryptocurrency backtesting system using historical OHLCV data from CSV files.
+A simple cryptocurrency backtesting system using historical OHLCV data.
 
-**⚠️ No live trading. No exchange APIs. Backtest only.**
+## ⚠️ Important
+
+- **NO LIVE TRADING** - Paper trading simulation only
+- **NO API CALLS** - All data from local CSV files
+- **NO EXCHANGE CONNECTIONS** - Fully offline
+- **NO Binance, ccxt, or live data sources**
 
 ## Quick Start
 
@@ -11,40 +16,39 @@ cd bot
 python3 main.py
 ```
 
-## Required CSV Format
+## Data Requirements
 
-Place your historical data in `data/BTC_5m.csv` with this format:
+Place your CSV data in `data/SOL_5m.csv`:
 
 ```csv
 timestamp,open,high,low,close,volume
-1609459200000,29000.00,29100.00,28900.00,29050.00,123.45
-1609459500000,29050.00,29150.00,29000.00,29100.00,98.76
+1609459200000,150.00,152.50,149.00,151.25,12345.67
+1609459500000,151.25,153.00,150.50,152.00,9876.54
 ```
 
-- **timestamp**: Unix timestamp in milliseconds
-- **open/high/low/close**: Price values
-- **volume**: Trading volume
+### Column Format
 
-## Supported Symbols
-
-- `data/BTC_5m.csv` - Bitcoin
-- `data/ETH_5m.csv` - Ethereum  
-- `data/SOL_5m.csv` - Solana
+| Column | Type | Description |
+|--------|------|-------------|
+| timestamp | int | Unix timestamp (milliseconds) |
+| open | float | Open price |
+| high | float | High price |
+| low | float | Low price |
+| close | float | Close price |
+| volume | float | Trading volume |
 
 ## Configuration
 
-Edit `config.py` to adjust:
+Edit `config.py`:
 
-- `INITIAL_BALANCE` - Starting paper balance
-- `STOP_LOSS_PCT` - Stop loss percentage
-- `TAKE_PROFIT_PCT` - Take profit percentage
-- `RISK_PER_TRADE_PCT` - Risk per trade
-- `COOLDOWN_CANDLES` - Candles between trades
-- `TREND_EMA_PERIOD` - EMA trend filter period
+```python
+SYMBOL = "SOL-USD"
+TIMEFRAME = "5m"
+DATA_FILE = "data/SOL_5m.csv"
+INITIAL_BALANCE = 1000.0
+```
 
-## Output Files
-
-After running a backtest:
+## Output
 
 - `trades.csv` - All executed trades
 - `equity.csv` - Equity curve over time
@@ -54,22 +58,29 @@ After running a backtest:
 ```
 bot/
 ├── main.py              # Entry point
-├── config.py            # Configuration
+├── config.py            # Settings
 ├── data/
-│   ├── load_csv.py      # CSV loader
-│   └── BTC_5m.csv       # Historical data
+│   ├── load_csv.py      # CSV loader (no APIs)
+│   └── SOL_5m.csv       # Your data file
 ├── backtest/
 │   └── engine.py        # Backtest engine
 ├── broker/
-│   └── paper_broker.py  # Paper trading broker
+│   └── paper_broker.py  # Paper trading
 └── strategies/
-    ├── base_strategy.py # Strategy interface
-    └── sma_cross.py     # SMA crossover strategy
+    └── sol_daytrader.py # Trading strategy
 ```
 
-## Notes
+## Offline Verification
 
-- This backtester uses **CSV files only**
-- No Binance, Coinbase, or other exchange APIs
-- No internet connection required
-- Paper trading simulation only
+This project makes **ZERO network requests**:
+
+- ❌ No `requests` library
+- ❌ No `ccxt` library
+- ❌ No `websocket` connections
+- ❌ No Binance/Coinbase/exchange APIs
+- ✅ CSV file reading only
+- ✅ Local file writing only
+
+## License
+
+For educational purposes only. Not financial advice.

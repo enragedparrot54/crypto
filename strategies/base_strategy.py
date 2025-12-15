@@ -1,29 +1,36 @@
 """
-Base strategy interface.
-All strategies must inherit from this class.
+Base Strategy - LONG ONLY.
+Returns: "BUY", "SELL", or "HOLD".
 """
 
 from abc import ABC, abstractmethod
 
 
 class BaseStrategy(ABC):
-    """Abstract base class for trading strategies."""
+    """Base class for LONG ONLY strategies.
+    
+    Signal definitions:
+    - "BUY"  = Open a LONG position
+    - "SELL" = Close an existing LONG position
+    - "HOLD" = Do nothing
+    
+    No short selling.
+    """
 
     @abstractmethod
     def on_candle(self, history, broker, symbol):
-        """Process a new candle and return a trading signal.
+        """Process candle and return signal.
         
         Args:
-            history: List of candle dicts up to current candle (no look-ahead)
-                     Each candle has: timestamp, open, high, low, close, volume
-            broker: PaperBroker instance for position checks
-            symbol: Trading symbol (e.g., "BTC/USDT")
+            history: List of candles up to current
+            broker: PaperBroker instance
+            symbol: Trading symbol
             
         Returns:
             "BUY", "SELL", or "HOLD"
         """
         pass
 
-    def position_size(self, history):
-        """Calculate position size for a trade."""
-        return 0.0
+    def reset(self):
+        """Reset strategy state."""
+        pass

@@ -1,91 +1,68 @@
 """
-Simple SMA Crossover Strategy.
-
-Buys when fast SMA crosses above slow SMA.
-Sells when fast SMA crosses below slow SMA.
+SMA Cross Strategy - LONG ONLY.
+Returns: "BUY", "SELL", or "HOLD".
 """
 
 from strategies.base_strategy import BaseStrategy
 
 
 class SMACrossStrategy(BaseStrategy):
-    """SMA Crossover strategy.
+    """Simple Moving Average crossover - LONG ONLY.
     
-    Entry (BUY): Fast SMA crosses above Slow SMA
-    Exit (SELL): Fast SMA crosses below Slow SMA
+    Signals:
+    - "BUY"  = Fast SMA crosses above slow SMA (open long)
+    - "SELL" = Fast SMA crosses below slow SMA (close long)
+    - "HOLD" = No crossover
     """
 
-    def __init__(self, fast=10, slow=30, risk_percent=1.0):
-        """Initialize strategy parameters.
-        
-        Args:
-            fast: Fast SMA period (default: 10)
-            slow: Slow SMA period (default: 30)
-            risk_percent: Risk per trade (unused, for compatibility)
-        """
-        self.fast = fast
-        self.slow = slow
-        self.risk_percent = risk_percent
-        self.prev_fast_ma = None
-        self.prev_slow_ma = None
+    def __init__(self, fast_period=10, slow_period=30):
+        self.fast_period = fast_period
+        self.slow_period = slow_period
+        self.prev_fast = None
+        self.prev_slow = None
 
-    def _calculate_sma(self, closes, period):
-        """Calculate simple moving average.
-        
-        Args:
-            closes: List of close prices
-            period: SMA period
-            
-        Returns:
-            SMA value, or None if not enough data
-        """
+    def _sma(self, closes, period):
         if len(closes) < period:
             return None
         return sum(closes[-period:]) / period
 
     def on_candle(self, history, broker, symbol):
-        """Process candle and generate trading signal.
-        
-        Args:
-            history: List of candles up to current
-            broker: PaperBroker instance
-            symbol: Trading symbol
-            
-        Returns:
-            "BUY", "SELL", or "HOLD"
-        """
-        # Need enough history
-        if len(history) < self.slow + 1:
+        """Return "BUY", "SELL", or "HOLD". LONG ONLY."""
+        if len(history) < self.slow_period + 5:
             return "HOLD"
-        
-        # Extract close prices
+
         closes = [c["close"] for c in history]
-        
-        # Calculate current SMAs
-        fast_ma = self._calculate_sma(closes, self.fast)
-        slow_ma = self._calculate_sma(closes, self.slow)
-        
-        if fast_ma is None or slow_ma is None:
+
+        fast = self._sma(closes, self.fast_period)
+        slow = self._sma(closes, self.slow_period)
+
+        if fast is None or slow is None:
             return "HOLD"
-        
-        signal = "HOLD"
-        
-        # Check for crossover (need previous values)
-        if self.prev_fast_ma is not None and self.prev_slow_ma is not None:
-            has_position = broker.has_position(symbol)
-            
-            # Bullish crossover: fast crosses above slow
-            if self.prev_fast_ma <= self.prev_slow_ma and fast_ma > slow_ma:
-                if not has_position:
-                    signal = "BUY"
-            
-            # Bearish crossover: fast crosses below slow
-            elif self.prev_fast_ma >= self.prev_slow_ma and fast_ma < slow_ma:
-                if has_position:
-                    signal = "SELL"
-        
-        # Store for next iteration
-        self.prev_fast_ma = fast_ma
-        self.prev_slow_ma = slow_ma
-        
-        return signal
+
+        # Detect crossover
+        cross = None
+        if self.prev_fast is not None and self.prev_slow is not None:
+            if self.prev_fast <= self.prev_slow and fast > slow:
+                cross = "BULLISH"
+            elif self.prev_fast >= self.prev_slow and fast < slow:
+                cross = "BEARISH"
+
+        self.prev_fast = fast
+        self.prev_slow = slow
+
+        has_pos = broker.has_position(symbol)
+
+        # SELL = Close existing LONG
+        if has_pos and cross == "BEARISH":
+            return "SELL"
+
+        # BUY = Open new LONG (only if no position)
+        if not has_pos and cross == "BULLISH":
+            return "BUY"
+
+        return "HOLD"
+
+    def reset(self):
+        """Reset strategy state."""
+        self.prev_fast = None
+        self.prev_slow = None

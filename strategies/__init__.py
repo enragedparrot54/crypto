@@ -1,9 +1,16 @@
 """
-Trading strategies module.
+Strategies - LONG ONLY.
+All strategies return: "BUY", "SELL", or "HOLD".
 """
 
 from strategies.base_strategy import BaseStrategy
-from strategies.sma_cross import SMACrossStrategy
 from strategies.breakout_ma import BreakoutMAStrategy
+from strategies.sol_daytrader import SOLDayTraderStrategy
+from strategies.sma_cross import SMACrossStrategy
 
-__all__ = ["BaseStrategy", "SMACrossStrategy", "BreakoutMAStrategy"]
+__all__ = [
+    "BaseStrategy",
+    "BreakoutMAStrategy",
+    "SOLDayTraderStrategy",
+    "SMACrossStrategy"
+]

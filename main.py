@@ -1,81 +1,68 @@
 """
-Crypto Backtester - CSV Only
-No live trading. No exchange APIs.
+CSV-only backtester.
+SOL-USD | LONG ONLY | $1,000 starting balance.
 """
 
 import os
 import sys
-from datetime import datetime
 
 from data.load_csv import load_candles
 from backtest.engine import BacktestEngine
-from strategies.sma_cross import SMACrossStrategy
+from strategies.sol_daytrader import SOLDayTraderStrategy
 import config
 
 
-# Data file path
-DATA_PATH = "data/BTC_5m.csv"
-SYMBOL = "BTC/USDT"
-
-
 def main():
-    """
-    Backtest-only paper trading system.
-    No live trading, APIs, WebSockets, or real orders.
-    """
     print("\n" + "=" * 50)
-    print("CRYPTO BACKTESTER (CSV Only)")
-    print("No live trading. No exchange APIs.")
+    print("BACKTESTER - SOL-USD - LONG ONLY")
     print("=" * 50)
-    
-    # Check if data file exists
-    if not os.path.exists(DATA_PATH):
-        print(f"\nERROR: Data file not found: {DATA_PATH}")
-        print(f"\nPlease create a CSV file with format:")
-        print(f"  timestamp,open,high,low,close,volume")
-        print(f"\nPlace your historical data at: {DATA_PATH}")
+
+    # Check if CSV file exists
+    if not os.path.exists(config.DATA_FILE):
+        print(f"\n❌ ERROR: Data file not found")
+        print(f"   Expected: {config.DATA_FILE}")
+        print(f"\n   Please create a CSV file with columns:")
+        print(f"   timestamp,open,high,low,close,volume")
         sys.exit(1)
-    
-    # Load candles from CSV (historical data only)
-    print(f"\nLoading data from: {DATA_PATH}")
-    candles = load_candles(DATA_PATH)
-    
+
+    # Check if file is empty
+    if os.path.getsize(config.DATA_FILE) == 0:
+        print(f"\n❌ ERROR: Data file is empty")
+        print(f"   File: {config.DATA_FILE}")
+        sys.exit(1)
+
+    print(f"\nSymbol:   {config.SYMBOL}")
+    print(f"Balance:  ${config.INITIAL_BALANCE:.2f}")
+    print(f"Data:     {config.DATA_FILE}")
+    print(f"Mode:     LONG ONLY")
+
+    # Load candles
+    candles = load_candles(config.DATA_FILE)
+
     if not candles:
-        print("ERROR: No candles loaded from CSV file")
+        print(f"\n❌ ERROR: No valid candles in file")
+        print(f"   File: {config.DATA_FILE}")
         sys.exit(1)
-    
-    print(f"✅ Loaded {len(candles)} candles")
-    
-    # Show data range
-    first_ts = candles[0]['timestamp']
-    last_ts = candles[-1]['timestamp']
-    try:
-        first_date = datetime.fromtimestamp(first_ts / 1000).strftime('%Y-%m-%d %H:%M')
-        last_date = datetime.fromtimestamp(last_ts / 1000).strftime('%Y-%m-%d %H:%M')
-        print(f"📅 Date range: {first_date} to {last_date}")
-    except:
-        print(f"📅 Timestamp range: {first_ts} to {last_ts}")
-    
-    # Initialize backtest engine and strategy
+
+    print(f"Candles:  {len(candles)}")
+
+    # Run backtest
     engine = BacktestEngine(verbose=True)
-    strategy = SMACrossStrategy(fast=10, slow=30, risk_percent=1.0)
-    
-    # Run backtest (paper trading only - no real orders)
-    print(f"\nRunning backtest for {SYMBOL}...")
-    results = engine.run_backtest(strategy, candles, SYMBOL)
-    
-    # Print final summary
+    strategy = SOLDayTraderStrategy()
+
+    results = engine.run_backtest(strategy, candles, config.SYMBOL)
+
+    # Results
+    perf = engine.evaluate_performance()
+    ret = ((perf["ending_balance"] - config.INITIAL_BALANCE) / config.INITIAL_BALANCE) * 100
+
     print("\n" + "=" * 50)
-    print("BACKTEST COMPLETE")
+    print("RESULTS - SOL-USD - LONG ONLY")
     print("=" * 50)
-    print(f"📊 Candles processed: {len(candles)}")
-    print(f"📈 Trades executed:   {len(results)}")
-    
-    performance = engine.evaluate_performance()
-    print(f"💰 Starting balance:  ${config.INITIAL_BALANCE:.2f}")
-    print(f"💰 Final balance:     ${performance['ending_balance']:.2f}")
-    print(f"📁 Trade log:         {config.TRADES_LOG_FILE}")
-    print(f"📁 Equity curve:      {config.EQUITY_LOG_FILE}")
+    print(f"Starting:  ${config.INITIAL_BALANCE:.2f}")
+    print(f"Ending:    ${perf['ending_balance']:.2f}")
+    print(f"Return:    {ret:+.2f}%")
+    print(f"Trades:    {perf['num_trades']}")
     print("=" * 50 + "\n")
 
 

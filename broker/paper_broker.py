@@ -1,212 +1,148 @@
 """
-Paper Broker for backtesting.
-Simulates order execution without real money.
-No leverage. No margin. Simple and deterministic.
+Paper Broker - LONG ONLY.
+One position max. No shorts. No leverage.
+Starting balance: $1,000.
 """
+
+import config
 
 
 class PaperBroker:
-    """Simple paper trading broker for backtesting.
+    """LONG ONLY paper broker.
     
-    Features:
-    - One open position per symbol
-    - Buy uses available cash
-    - Sell closes position fully
-    - No leverage or margin
-    - Deterministic execution at specified price
+    Rules:
+    - Starting balance: $1,000
+    - One position at a time
+    - BUY opens a LONG position
+    - SELL closes the LONG position
+    - No short selling
+    - Position sizing uses available balance only
+    - BUY ignored if position exists
+    - SELL ignored if no position exists
     """
 
-    def __init__(self, initial_cash=10000.0):
-        """Initialize paper broker with starting cash.
-        
-        Args:
-            initial_cash: Starting balance in USD
-        """
-        self.initial_cash = initial_cash
-        self.cash = initial_cash
-        self.positions = {}  # {symbol: {"amount": float, "entry_price": float}}
+    DEFAULT_BALANCE = 1000.0
 
-    def has_position(self, symbol):
-        """Check if there is an open position for symbol.
+    def __init__(self, initial_cash=None):
+        # Set starting balance to exactly $1,000
+        if initial_cash is None:
+            initial_cash = self.DEFAULT_BALANCE
         
-        Args:
-            symbol: Trading symbol (e.g., "BTC/USDT")
-            
-        Returns:
-            True if position exists with amount > 0
-        """
-        if symbol not in self.positions:
+        if not isinstance(initial_cash, (int, float)) or initial_cash <= 0:
+            initial_cash = self.DEFAULT_BALANCE
+        
+        self.initial_cash = float(initial_cash)
+        self.cash = float(initial_cash)
+        
+        # LONG position state
+        self.position_symbol = None
+        self.position_size = 0.0
+        self.entry_price = 0.0
+
+    def has_position(self, symbol=None):
+        """Check if a LONG position exists."""
+        if self.position_size <= 0:
             return False
-        return self.positions[symbol]["amount"] > 0
+        if symbol is not None and self.position_symbol != symbol:
+            return False
+        return True
 
-    def position_amount(self, symbol):
-        """Get position size for symbol.
-        
-        Args:
-            symbol: Trading symbol
-            
-        Returns:
-            Position amount, or 0.0 if no position
-        """
-        if symbol not in self.positions:
+    def position_amount(self, symbol=None):
+        """Get LONG position size."""
+        if not self.has_position(symbol):
             return 0.0
-        return self.positions[symbol]["amount"]
+        return self.position_size
 
-    def position_entry(self, symbol):
-        """Get entry price for symbol's position.
-        
-        Args:
-            symbol: Trading symbol
-            
-        Returns:
-            Entry price, or 0.0 if no position
-        """
-        if symbol not in self.positions:
+    def position_entry(self, symbol=None):
+        """Get LONG entry price."""
+        if not self.has_position(symbol):
             return 0.0
-        return self.positions[symbol]["entry_price"]
+        return self.entry_price
 
-    def get_equity(self, prices):
-        """Calculate total equity (cash + position value).
-        
-        Args:
-            prices: Dict of {symbol: current_price}
-            
-        Returns:
-            Total equity value in USD
-        """
+    def get_balance(self):
+        """Get available cash balance."""
+        return self.cash
+
+    def get_equity(self, price=None):
+        """Get total equity (cash + position value)."""
         equity = self.cash
-        
-        for symbol, position in self.positions.items():
-            if position["amount"] > 0 and symbol in prices:
-                equity += position["amount"] * prices[symbol]
-        
+        if self.has_position():
+            if isinstance(price, (int, float)) and price > 0:
+                equity += self.position_size * price
         return equity
 
-    def _buy(self, symbol, amount, price):
-        """Execute a buy order.
+    def max_buy_amount(self, price):
+        """Calculate max amount that can be bought with available balance."""
+        if not isinstance(price, (int, float)) or price <= 0:
+            return 0.0
+        return self.cash / price
+
+    def buy(self, symbol, amount, price):
+        """Open LONG position using available balance only.
         
-        Only one position per symbol allowed.
-        Uses available cash to buy.
-        
-        Args:
-            symbol: Trading symbol
-            amount: Amount to buy
-            price: Execution price
-            
-        Returns:
-            True if order executed, False otherwise
+        Ignored if:
+        - Position already exists
+        - Invalid inputs
+        - Insufficient cash (no leverage)
         """
         # Validate inputs
-        if amount <= 0 or price <= 0:
+        if not symbol or not isinstance(symbol, str):
+            return False
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            return False
+        if not isinstance(price, (int, float)) or price <= 0:
             return False
         
-        # Block if already in position (one position per symbol)
-        if self.has_position(symbol):
+        # IGNORE: Position already exists
+        if self.has_position():
             return False
         
         # Calculate cost
         cost = amount * price
         
-        # Check sufficient cash
+        # BLOCK: Cannot exceed available balance (no leverage)
         if cost > self.cash:
             return False
         
-        # Execute buy
+        # Open LONG using available balance
         self.cash -= cost
-        self.positions[symbol] = {
-            "amount": amount,
-            "entry_price": price
-        }
+        self.position_symbol = symbol
+        self.position_size = float(amount)
+        self.entry_price = float(price)
         
         return True
 
-    def _sell(self, symbol, amount, price):
-        """Execute a sell order.
+    def sell(self, symbol, amount, price):
+        """Close LONG position.
         
-        Closes position fully (ignores amount if it exceeds position).
+        Ignored if:
+        - No position exists
+        - Invalid inputs
         
-        Args:
-            symbol: Trading symbol
-            amount: Amount to sell (will sell full position)
-            price: Execution price
-            
-        Returns:
-            True if order executed, False otherwise
+        Note: 'amount' parameter ignored, always sells full position.
         """
         # Validate inputs
-        if amount <= 0 or price <= 0:
+        if not isinstance(price, (int, float)) or price <= 0:
             return False
         
-        # Check if position exists
+        # IGNORE: No position to close
         if not self.has_position(symbol):
             return False
         
-        # Get actual position amount
-        position_amount = self.positions[symbol]["amount"]
-        
-        # Sell the full position (or requested amount if smaller)
-        sell_amount = min(amount, position_amount)
-        
-        # Calculate proceeds
-        proceeds = sell_amount * price
-        
-        # Execute sell
+        # Close LONG (sell entire position)
+        proceeds = self.position_size * price
         self.cash += proceeds
         
-        # Close position fully
-        self.positions[symbol] = {
-            "amount": 0.0,
-            "entry_price": 0.0
-        }
+        # Clear position
+        self.position_symbol = None
+        self.position_size = 0.0
+        self.entry_price = 0.0
         
         return True
 
     def reset(self):
-        """Reset broker to initial state."""
+        """Reset to initial state ($1,000)."""
         self.cash = self.initial_cash
-        self.positions = {}
-
-    def get_balance(self):
-        """Get current cash balance.
-        
-        Returns:
-            Available cash in USD
-        """
-        return self.cash
-
-    def get_position_value(self, symbol, current_price):
-        """Get current value of position.
-        
-        Args:
-            symbol: Trading symbol
-            current_price: Current market price
-            
-        Returns:
-            Position value in USD, or 0.0 if no position
-        """
-        if not self.has_position(symbol):
-            return 0.0
-        return self.positions[symbol]["amount"] * current_price
-
-    def get_unrealized_pnl(self, symbol, current_price):
-        """Get unrealized profit/loss for position.
-        
-        Args:
-            symbol: Trading symbol
-            current_price: Current market price
-            
-        Returns:
-            Unrealized PnL in USD, or 0.0 if no position
-        """
-        if not self.has_position(symbol):
-            return 0.0
-        
-        position = self.positions[symbol]
-        entry_value = position["amount"] * position["entry_price"]
-        current_value = position["amount"] * current_price
-        
-        return current_value - entry_value
-
-    def __repr__(self):
-        """String representation of broker state."""
-        return f"PaperBroker(cash=${self.cash:.2f}, positions={len(self.positions)})"
+        self.position_symbol = None
+        self.position_size = 0.0
+        self.entry_price = 0.0
